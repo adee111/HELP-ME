@@ -103,3 +103,11 @@ Autorização verificada em sandbox HELP-ME. Esta autorização da CLI é tempor
 Links de demonstração foram criados no sandbox para os valores de referência R$180/R$260 e disponibilizados na prévia visual. Não geram agendamento e não atualizam seu status de pagamento; não substituem o fluxo autenticado de Checkout + webhook do backend. IDs e links públicos de teste estão em stripe-sandbox-links.json.
 
 Para pagamentos de agendamentos no site, ainda é necessário publicar o backend com persistência, configurar uma chave restrita Stripe no servidor e cadastrar/testar o webhook. A versão local aceita chaves sk_test_ ou rk_test_; o hosted checkout usa métodos dinâmicos configurados no Stripe. Split para profissionais permanece pendente.
+
+## Dashboard do prestador
+
+Profissionais autenticados abrem automaticamente o painel. A prévia demonstrativa está disponível em `?painel=demo`; é separada dos registros reais, usa fixtures identificadas e não persiste alterações. A rota demonstrativa não fornece autorização e nenhuma API permite acessar registros privados sem sessão.
+
+Visão geral com KPIs, calendário mensal e serviços por dia, próximas solicitações, detalhes e aceite/recusa/conclusão, histórico com busca/filtro/CSV, pagamentos por serviço e configuração de oferta/disponibilidade. Datas da agenda em America/Sao_Paulo.
+
+Cobranças confirmadas são valores brutos pagos pelos clientes, não repasses ao profissional. Repasses reais são mostrados como não disponíveis enquanto Stripe Connect não for integrado. Fixtures de repasses são apenas ilustrações, sem estabelecer comissão comercial. A seleção de mês organiza os serviços por data do serviço; o indicador de repasses usa data do recebimento.
