@@ -198,3 +198,11 @@ O cadastro do prestador inclui apresentação, habilidades e referências profis
 Somente o cliente vinculado a um serviço concluído pode publicar uma avaliação de 1 a 5 estrelas e um comentário de 3 a 1000 caracteres, uma vez por agendamento. O primeiro nome do cliente aparece no comentário; email, telefone e endereço não são expostos. Contas bloqueadas não podem publicar.
 
 A Edge Function `helpme-reputation` é dedicada a perfis e avaliações. As leituras públicas são limitadas a ofertas e perfis aprovados; todas as operações privadas validam o token com `auth.getUser` e as permissões no banco. A API principal e os pagamentos não foram alterados. Testes de regressão: `tests/reputation.test.js` e `supabase/tests/reputation.sql`.
+
+## Fotos, valores por hora e cadastro de serviços
+
+O prestador pode escolher uma foto JPEG, PNG ou WebP de até 5 MB no cadastro e no editor do perfil. A imagem é reduzida no navegador a um avatar JPEG e persistida junto ao perfil; sem foto, aparece a inicial do nome.
+
+Os preços de ofertas e os filtros representam R$/hora. O cliente escolhe de 0,5 a 12 horas; o servidor valida a disponibilidade e calcula o total em centavos, armazenando o valor/hora e as horas contratadas no agendamento. Agendamentos anteriores conservam o total original. Não há medição automática de ponto: a cobrança corresponde às horas escolhidas e confirmadas no pedido.
+
+A rota POST /offers usa helpme-api; somente GET /offers usa helpme-reputation. Testes de regressão: tests/hourly-routes.test.js e supabase/tests/hourly.sql.

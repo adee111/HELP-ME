@@ -6,10 +6,10 @@ do $$declare a uuid:=gen_random_uuid();c uuid:=gen_random_uuid();p uuid:=gen_ran
  insert into helpme.connected_accounts(professional_id,account_id) values(p,'acct_Test'||replace(p::text,'-',''));
  insert into helpme.admins values(a);update helpme.profiles set account_status='approved' where id=a;
  begin perform public.helpme_api(c,'/admin','GET');raise exception 'FAILED: unauthorized admin access';exception when sqlstate 'PT403' then null;end;
- begin perform public.helpme_api(c,'/bookings','POST','{}');raise exception 'FAILED: pending booking';exception when sqlstate 'PT403' then null;end;
- perform public.helpme_api(a,'/admin/users/'||c||'/review','POST',jsonb_build_object('status','approved','note','Cadastro de teste aprovado'));
+ begin perform public.helpme_api(c,'/bookings','POST','{}');raise exception 'FAILED: invalid booking';exception when sqlstate 'PT400' then null;end;
+ if (public.helpme_api(c,'/me','GET')->'user'->>'approved')::boolean is not true then raise exception 'FAILED: customer auto approval';end if;
  perform public.helpme_api(a,'/admin/users/'||p||'/review','POST',jsonb_build_object('status','approved','note','Prestador de teste aprovado'));
- perform public.helpme_api(p,'/offers','POST','{"serviceId":"residential","price":18000,"duration":240}');
+ perform public.helpme_api(p,'/offers','POST','{"serviceId":"residential","price":4500,"duration":240}');
  perform public.helpme_api(p,'/slots','POST',jsonb_build_object('start',to_timestamp(clock/1000.0),'end',to_timestamp((clock+28800000)/1000.0)));
  out:=public.helpme_api(c,'/bookings','POST',jsonb_build_object('professionalId',p,'serviceId','residential','address','Rua Teste, 100, Maravilha SC','start',to_timestamp(clock/1000.0),'requestKey',key));bid:=(out->>'id')::uuid;
  if (public.helpme_api(c,'/bookings','POST',jsonb_build_object('professionalId',p,'serviceId','residential','address','Rua Teste, 100, Maravilha SC','start',to_timestamp(clock/1000.0),'requestKey',key))->>'id')::uuid<>bid then raise exception 'FAILED: booking idempotence';end if;
@@ -33,3 +33,4 @@ do $$declare a uuid:=gen_random_uuid();c uuid:=gen_random_uuid();p uuid:=gen_ran
 end $$;
 select 'PASS: approval, reservations, private chat, checkout lock, payment idempotence, suspension and audit' result;
 rollback;
+
