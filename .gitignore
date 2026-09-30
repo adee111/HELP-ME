@@ -5,3 +5,7 @@ data/
 *.log
 
 .stripe-cli.toml
+
+.env.*
+!.env.example
+supabase/.temp/

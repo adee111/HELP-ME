@@ -1,0 +1,9 @@
+project_id = "helpme-saas"
+
+# Public read endpoints plus getUser() validation for every private operation.
+[functions.helpme-api]
+verify_jwt = false
+
+# Stripe authenticates via a verified raw-body signature.
+[functions.helpme-stripe-webhook]
+verify_jwt = false

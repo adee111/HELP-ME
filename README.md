@@ -64,7 +64,7 @@ Para operar a Help.me como intermediária, a próxima etapa é Stripe Connect: o
 
 React + TypeScript + Vite → Express/Node → SQLite persistente + Stripe.
 
-SQLite via node:sqlite, sem driver adicional, exige Node 24. Escolhido para teste imediato sem credenciais externas. Isto substitui temporariamente a proposta Supabase/Google OAuth: migração para PostgreSQL/Supabase e adaptação da autenticação não foram feitas. O backend precisa de hospedagem Node com disco persistente; Cloudflare Pages sozinho não executa esta aplicação. Não usar banco SQLite em disco efêmero/serverless.
+O site publicado usa Supabase Auth, PostgreSQL e Edge Functions. O servidor Node/SQLite permanece como alternativa local para desenvolvimento e testes sem credenciais. Node 24 é necessário somente nessa alternativa. Configure as variáveis VITE_SUPABASE_* para usar o backend hospedado.
 
 ## Segurança e limites conhecidos
 
@@ -102,7 +102,7 @@ Autorização verificada em sandbox HELP-ME. Esta autorização da CLI é tempor
 
 Links de demonstração foram criados no sandbox para os valores de referência R$180/R$260 e disponibilizados na prévia visual. Não geram agendamento e não atualizam seu status de pagamento; não substituem o fluxo autenticado de Checkout + webhook do backend. IDs e links públicos de teste estão em stripe-sandbox-links.json.
 
-Para pagamentos de agendamentos no site, ainda é necessário publicar o backend com persistência, configurar uma chave restrita Stripe no servidor e cadastrar/testar o webhook. A versão local aceita chaves sk_test_ ou rk_test_; o hosted checkout usa métodos dinâmicos configurados no Stripe. Split para profissionais permanece pendente.
+O backend de agendamentos está publicado no Supabase. Para pagamentos vinculados aos pedidos, configure HELPME_STRIPE_SECRET_KEY e HELPME_STRIPE_WEBHOOK_SECRET nos segredos das Edge Functions e registre o endpoint helpme-stripe-webhook no Stripe. Somente chaves de teste são aceitas. Split para profissionais permanece pendente.
 
 ## Dashboard do prestador
 
@@ -122,15 +122,46 @@ Chat bilateral vinculado a cada agendamento, disponível desde a solicitação. 
 
 O histórico permanece consultável após conclusão/cancelamento; a política de retenção/exclusão ainda precisa ser definida antes do lançamento público. Não enviar dados de cartão ou senhas pelo chat.
 
-Prévia: `?cliente=demo` abre painel com fixtures; `?cadastro=cliente` abre a tela de cadastro. No site estático, cadastro real/chat persistente continuam indisponíveis. Mensagens de demonstração ficam só na memória da página, sem autorizações simuladas ou envio a pessoas reais. O backend Node precisa ser executado/hospedado para o fluxo real.
+Prévia: `?cliente=demo` abre painel com fixtures; `?cadastro=cliente` abre a tela de cadastro. O site usa Supabase para cadastro real e chat persistente. As rotas de demonstração mantêm mensagens somente na memória, com identificação de dados fictícios.
 
 
 ### Administração
 
-A prévia `/?admin=demo` usa dados fictícios e alterações temporárias. No servidor, cadastre uma conta e execute `npm run grant-admin -- email-da-conta` com acesso ao banco e ao ambiente do servidor para conceder o primeiro acesso administrativo. Nenhum cadastro público pode atribuir esse privilégio. Contas administrativas devem ser gerenciadas pelo operador do servidor.
+A prévia `/?admin=demo` usa dados fictícios e alterações temporárias. Na alternativa local SQLite, cadastre uma conta e execute `npm run grant-admin -- email-da-conta`. No Supabase, use o procedimento de operador documentado abaixo, após login e criação do perfil. Nenhum cadastro público pode atribuir esse privilégio. Contas administrativas devem ser gerenciadas pelo operador do servidor.
 
 Clientes novos precisam de aprovação antes de agendar ou pagar. O painel permite revisar clientes e prestadores (aprovar, recusar, suspender ou devolver à fila), exige justificativa e registra a decisão com autor e data. Contas recusadas ou suspensas não podem realizar novas operações. A suspensão não cancela agendamentos nem estorna pagamentos.
 
 O financeiro lista pagamentos brutos confirmados pelo webhook assinado e idempotente em modo de teste. Comissões, tarifas Stripe, estornos e repasses ainda não são sincronizados. Pagamentos antigos sem registro no novo livro de movimentações não possuem data de recebimento atribuída. Não há confirmação manual de pagamento. O painel não expõe o conteúdo das conversas privadas.
 
-A prévia hospedada é estática; autenticação, aprovações, chat e banco funcionam com o servidor Node e seu SQLite, que ainda precisam ser hospedados para uso real.
+O frontend hospedado se conecta ao Supabase Auth e às funções helpme-api e helpme-stripe-webhook. A autenticação exige confirmação de email conforme as configurações atuais do projeto.
+
+
+### Backend Supabase publicado
+
+Projeto: `ghtjngkdqfgpzklzcxxi` (São Paulo). Os dados novos ficam no schema privado `helpme`, separado da implementação Readdy anterior. As tabelas antigas e suas funções foram preservadas; usuários e registros SQLite não são automaticamente importados.
+
+- `src/lib/backend.ts`: Supabase Auth e adaptador das telas existentes.
+- `supabase/functions/helpme-api/index.ts`: verifica token via `getUser`, perfil, aprovação, participação no agendamento e permissões administrativas. Usa chave de serviço somente dentro da função. Operações privadas nunca confiam em metadata de privilégios do usuário.
+- `supabase/migrations/`: tabelas e procedimentos transacionais. RPCs são SECURITY INVOKER, executáveis apenas por service_role. RLS, isolamento do schema e revogação de acesso direto dos navegadores são aplicados.
+- `supabase/tests/backend.sql`: teste transacional com rollback, incluindo permissões efetivas de service_role, conflito de reserva, privacidade do chat e idempotência financeira. Não deixa usuários ou pagamentos de teste salvos.
+
+Para desenvolvimento, preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` em `.env.local`. Use somente a chave publicável; nunca uma chave secreta no bundle. Rode `npm run build`. Sem essas variáveis, a alternativa Node/SQLite continua disponível.
+
+**Primeiro administrador:** faça cadastro, confirme email e entre no site uma vez para criar o perfil. O operador autorizado do projeto executa no SQL Editor, substituindo o email explicitamente:
+
+```sql
+begin;
+insert into helpme.admins(user_id)
+select id from helpme.profiles where email = 'SEU_EMAIL_CONFIRMADO'
+on conflict do nothing;
+update helpme.profiles set account_status = 'approved'
+where email = 'SEU_EMAIL_CONFIRMADO'
+  and exists(select 1 from helpme.admins a where a.user_id = helpme.profiles.id);
+commit;
+```
+
+**Emails:** cadastros estão habilitados, mas o projeto exige confirmação de email. Configure SMTP próprio no Supabase Auth para enviar a clientes externos à equipe e inclua a URL publicada em Site URL/Redirect URLs. A entrega de emails e redirecionamentos precisam ser validados com uma conta real do operador; não foram enviados emails a terceiros durante a integração.
+
+**Stripe:** checkout de teste e webhook estão implementados; a função responde explicitamente 503 enquanto os segredos específicos HELPME_* não estiverem configurados. Segredos de outras funções antigas não são reutilizados automaticamente.
+
+**Auditoria do projeto anterior:** o Security Advisor sinaliza funções SECURITY DEFINER antigas (`public.is_admin`, `public.enforce_profile_role`) acessíveis pelas roles de navegador e proteção contra senhas vazadas desabilitada. As novas funções não usam SECURITY DEFINER. Revise as dependências da implementação antiga antes de restringir suas funções.
