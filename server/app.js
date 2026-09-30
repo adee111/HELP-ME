@@ -1,3 +1,4 @@
+import {installReputation} from './reputation.js';
 import express from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -69,8 +70,9 @@ export function createApp({dbPath=process.env.DATABASE_PATH||'data/helpme.sqlite
   if(!req.user)return res.status(401).json({error:'Entre na sua conta.'});if(!['GET','HEAD'].includes(req.method)&&!req.path.endsWith('/auth/logout')&&['rejected','suspended'].includes(accountStatus(req.user)))return res.status(403).json({error:'Sua conta está bloqueada para novas operações.'});next();
  };
  const login=(res,u)=>{const token=randomBytes(32).toString('hex');db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(tokenHash(token),u.id,Date.now()+86400000);res.cookie('helpme_session',token,{httpOnly:true,sameSite:'strict',secure:new URL(appUrl).protocol==='https:',maxAge:86400000});res.json({user:cleanUser(u)})};
- const registration=z.object({name:z.string().trim().min(2).max(100),email:z.email().max(254).transform(x=>x.toLowerCase()),phone:z.string().regex(/^\+?[0-9 ()-]{10,20}$/),password:z.string().min(12).max(128),role:z.enum(['customer','professional'])});
- app.post('/api/auth/register',(req,res,next)=>{try{const v=registration.parse(req.body);if(db.prepare('SELECT id FROM users WHERE email=?').get(v.email))fail(409,'Email já cadastrado.');const salt=randomBytes(16).toString('hex');const hash=scryptSync(v.password,salt,64).toString('hex');const id=randomUUID();db.prepare('INSERT INTO users(id,name,email,phone,password,role,approved) VALUES(?,?,?,?,?,?,?)').run(id,v.name,v.email,v.phone,`${salt}:${hash}`,v.role,v.role==='customer'?1:0);login(res,db.prepare('SELECT * FROM users WHERE id=?').get(id))}catch(e){next(e)}});
+ installReputation(app,db,auth,fail);
+ const registration=z.object({name:z.string().trim().min(2).max(100),email:z.email().max(254).transform(x=>x.toLowerCase()),phone:z.string().regex(/^\+?[0-9 ()-]{10,20}$/),password:z.string().min(12).max(128),role:z.enum(['customer','professional']),bio:z.string().trim().max(1500).default(''),skills:z.string().trim().max(1000).default(''),references:z.string().trim().max(1500).default('')});
+ app.post('/api/auth/register',(req,res,next)=>{try{const v=registration.parse(req.body);if(db.prepare('SELECT id FROM users WHERE email=?').get(v.email))fail(409,'Email já cadastrado.');const salt=randomBytes(16).toString('hex');const hash=scryptSync(v.password,salt,64).toString('hex');const id=randomUUID();db.prepare('INSERT INTO users(id,name,email,phone,password,role,approved) VALUES(?,?,?,?,?,?,?)').run(id,v.name,v.email,v.phone,`${salt}:${hash}`,v.role,v.role==='customer'?1:0);if(v.role==='professional')db.prepare('INSERT INTO provider_profiles VALUES(?,?,?,?)').run(id,v.bio,v.skills,v.references);login(res,db.prepare('SELECT * FROM users WHERE id=?').get(id))}catch(e){next(e)}});
  app.post('/api/auth/login',(req,res,next)=>{try{const v=z.object({email:z.email(),password:z.string().max(128)}).parse(req.body);const u=db.prepare('SELECT * FROM users WHERE email=?').get(v.email.toLowerCase());const [salt,hash]=(u?.password||`${'0'.repeat(32)}:${'0'.repeat(128)}`).split(':');if(!timingSafeEqual(scryptSync(v.password,salt,64),Buffer.from(hash,'hex'))||!u)fail(401,'Email ou senha incorretos.');login(res,u)}catch(e){next(e)}});
  app.get('/api/me',auth,(req,res)=>res.json({user:cleanUser(req.user)}));
  app.post('/api/auth/logout',auth,(req,res)=>{db.prepare('DELETE FROM sessions WHERE token=?').run(tokenHash(req.cookies.helpme_session));res.clearCookie('helpme_session');res.json({ok:true})});
@@ -89,7 +91,7 @@ export function createApp({dbPath=process.env.DATABASE_PATH||'data/helpme.sqlite
  app.get('/api/config',(req,res)=>res.json({stripeConfigured:false,testMode:true}));
  app.get('/api/services',(req,res)=>res.json(db.prepare('SELECT * FROM services').all()));
  app.get('/api/professionals',(req,res)=>res.json(db.prepare("SELECT id,name FROM users WHERE role='professional' AND approved=1").all()));
- app.get('/api/offers',(req,res)=>res.json(db.prepare('SELECT o.*,u.name professional_name,s.name service_name FROM offers o JOIN users u ON u.id=o.professional_id JOIN services s ON s.id=o.service_id WHERE u.approved=1').all()));
+ app.get('/api/offers',(req,res)=>res.json(db.prepare('SELECT o.*,u.name professional_name,s.name service_name,(SELECT round(avg(rating),1) FROM service_reviews WHERE professional_id=u.id) rating_average,(SELECT count(*) FROM service_reviews WHERE professional_id=u.id) review_count FROM offers o JOIN users u ON u.id=o.professional_id JOIN services s ON s.id=o.service_id WHERE u.approved=1').all()));
  app.get('/api/professionals/:id/availability',auth,(req,res,next)=>{try{
  const offer=db.prepare('SELECT o.* FROM offers o JOIN users u ON u.id=o.professional_id WHERE o.professional_id=? AND o.service_id=? AND u.approved=1').get(req.params.id,String(req.query.serviceId||''));if(!offer)fail(404,'Oferta não encontrada.');
  const now=Date.now(),horizon=now+60*86400000;

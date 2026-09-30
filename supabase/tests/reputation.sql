@@ -1,0 +1,22 @@
+begin;
+do $$declare c uuid:=gen_random_uuid(); p uuid:=gen_random_uuid(); x uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); out jsonb; begin
+ insert into auth.users(id,email) values(c,'review-client@example.invalid'),(p,'review-provider@example.invalid'),(x,'review-other@example.invalid');
+ insert into helpme.profiles(id,name,email,phone,role,account_status) values(c,'Cliente Teste','review-client@example.invalid','49999999999','customer','approved'),(p,'Prestador Teste','review-provider@example.invalid','49999999999','professional','approved'),(x,'Outro Teste','review-other@example.invalid','49999999999','customer','approved');
+ perform public.helpme_reputation(p,'/provider-profile/me','POST','{"bio":"Experiência em limpeza residencial.","skills":"Pontualidade e organização","references":"Experiência em residências."}');
+ insert into helpme.offers(professional_id,service_id,price,duration) values(p,'residential',18000,240);
+ insert into helpme.bookings(id,customer_id,professional_id,service_id,address,start,"end",price,status,request_key) values(b,c,p,'residential','Rua de Teste, 100',1,2,18000,'accepted',gen_random_uuid());
+ begin perform public.helpme_reputation(x,'/reviews','POST',jsonb_build_object('bookingId',b,'rating',5,'comment','Muito bom'));raise exception 'FAILED third party';exception when sqlstate 'PT404' then null;end;
+ begin perform public.helpme_reputation(p,'/reviews','POST',jsonb_build_object('bookingId',b,'rating',5,'comment','Muito bom'));raise exception 'FAILED self review';exception when sqlstate 'PT403' then null;end;
+ begin perform public.helpme_reputation(c,'/reviews','POST',jsonb_build_object('bookingId',b,'rating',5,'comment','Muito bom'));raise exception 'FAILED incomplete';exception when sqlstate 'PT409' then null;end;
+ update helpme.bookings set status='completed' where id=b;
+ begin perform public.helpme_reputation(c,'/reviews','POST',jsonb_build_object('bookingId',b,'rating',6,'comment','Muito bom'));raise exception 'FAILED rating range';exception when sqlstate 'PT400' then null;end;
+ perform public.helpme_reputation(c,'/reviews','POST',jsonb_build_object('bookingId',b,'rating',5,'comment','Muito bom'));
+ begin perform public.helpme_reputation(c,'/reviews','POST',jsonb_build_object('bookingId',b,'rating',4,'comment','Outro comentário'));raise exception 'FAILED duplicate';exception when sqlstate 'PT409' then null;end;
+ out:=public.helpme_reputation(null,'/provider-profile','GET',jsonb_build_object('professionalId',p));
+ if (out->>'rating_average')::numeric<>5 or (out->>'review_count')::integer<>1 or out->>'skills'<>'Pontualidade e organização' then raise exception 'FAILED public profile';end if;
+ if out ? 'email' or out ? 'phone' then raise exception 'FAILED public privacy';end if;
+ if jsonb_array_length(public.helpme_reputation(c,'/reviews/mine','GET'))<>1 then raise exception 'FAILED own reviews';end if;
+ update helpme.profiles set account_status='suspended' where id=c;
+ begin perform public.helpme_reputation(c,'/reviews','POST',jsonb_build_object('bookingId',b,'rating',5,'comment','Muito bom'));raise exception 'FAILED suspension';exception when sqlstate 'PT403' then null;end;
+end $$;
+rollback;

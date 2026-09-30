@@ -7,3 +7,7 @@ verify_jwt = false
 # Stripe authenticates via a verified raw-body signature.
 [functions.helpme-stripe-webhook]
 verify_jwt = false
+
+# Public reputation reads; private routes verify identity via auth.getUser().
+[functions.helpme-reputation]
+verify_jwt = false

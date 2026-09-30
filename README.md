@@ -190,3 +190,11 @@ A alternativa local SQLite não cria mais Checkout: retorna 503 e não permite q
 Execute `npm run lint` para analisar frontend, backend Node e Edge Functions do Supabase. Use `npm run lint:fix` para aplicar correções automáticas. A configuração está em `eslint.config.js`, com regras para JavaScript, TypeScript e React Hooks.
 
 O TypeScript está fixado na série 6.0, compatível com typescript-eslint. Antes de enviar alterações, execute também `npm run build` e `npm test`.
+
+## Perfil dos prestadores e avaliações
+
+O cadastro do prestador inclui apresentação, habilidades e referências profissionais. Esses campos podem ser editados em Serviços e horários → Meu perfil público. O perfil público de prestadores aprovados está disponível na busca, com média de estrelas, total de avaliações e comentários. Prestadores sem avaliações não recebem nota artificial.
+
+Somente o cliente vinculado a um serviço concluído pode publicar uma avaliação de 1 a 5 estrelas e um comentário de 3 a 1000 caracteres, uma vez por agendamento. O primeiro nome do cliente aparece no comentário; email, telefone e endereço não são expostos. Contas bloqueadas não podem publicar.
+
+A Edge Function `helpme-reputation` é dedicada a perfis e avaliações. As leituras públicas são limitadas a ofertas e perfis aprovados; todas as operações privadas validam o token com `auth.getUser` e as permissões no banco. A API principal e os pagamentos não foram alterados. Testes de regressão: `tests/reputation.test.js` e `supabase/tests/reputation.sql`.
