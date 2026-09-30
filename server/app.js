@@ -39,7 +39,7 @@ export function createApp({dbPath=process.env.DATABASE_PATH||'data/helpme.sqlite
  db.exec("UPDATE users SET approved=1 WHERE role='customer' AND approved=0 AND id NOT IN (SELECT user_id FROM account_reviews WHERE status IN ('rejected','suspended')); UPDATE account_reviews SET status='approved' WHERE status='pending' AND user_id IN (SELECT id FROM users WHERE role='customer');");
  const accountStatus=u=>db.prepare('SELECT status FROM account_reviews WHERE user_id=?').get(u.id)?.status||(u.approved?'approved':'pending');
  const isAdmin=u=>!!db.prepare('SELECT user_id FROM admins WHERE user_id=?').get(u.id);
- const cleanUser=u=>({id:u.id,name:u.name,email:u.email,phone:u.phone,role:u.role,approved:!!u.approved,accountStatus:accountStatus(u),isAdmin:isAdmin(u)});
+ const cleanUser=u=>({id:u.id,name:u.name,email:u.email,phone:u.phone,role:isAdmin(u)?'admin':u.role,approved:!!u.approved,accountStatus:accountStatus(u),isAdmin:isAdmin(u)});
  const tokenHash=t=>createHash('sha256').update(t).digest('hex');
  app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'128kb'}),(req,res,next)=>{
   if(!stripe||!webhookSecret)return res.status(503).json({error:'Webhook Stripe não configurado.'});
@@ -67,7 +67,7 @@ export function createApp({dbPath=process.env.DATABASE_PATH||'data/helpme.sqlite
  const auth=(req,res,next)=>{
   const t=req.cookies.helpme_session;
   req.user=t?db.prepare('SELECT u.* FROM sessions s JOIN users u ON s.user_id=u.id WHERE s.token=? AND s.expires>?').get(tokenHash(t),Date.now()):null;
-  if(!req.user)return res.status(401).json({error:'Entre na sua conta.'});if(!['GET','HEAD'].includes(req.method)&&!req.path.endsWith('/auth/logout')&&['rejected','suspended'].includes(accountStatus(req.user)))return res.status(403).json({error:'Sua conta está bloqueada para novas operações.'});next();
+  if(!req.user)return res.status(401).json({error:'Entre na sua conta.'});if(isAdmin(req.user))req.user.role='admin';if(!['GET','HEAD'].includes(req.method)&&!req.path.endsWith('/auth/logout')&&['rejected','suspended'].includes(accountStatus(req.user)))return res.status(403).json({error:'Sua conta está bloqueada para novas operações.'});next();
  };
  const login=(res,u)=>{const token=randomBytes(32).toString('hex');db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(tokenHash(token),u.id,Date.now()+86400000);res.cookie('helpme_session',token,{httpOnly:true,sameSite:'strict',secure:new URL(appUrl).protocol==='https:',maxAge:86400000});res.json({user:cleanUser(u)})};
  installReputation(app,db,auth,fail);
