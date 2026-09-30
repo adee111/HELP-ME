@@ -111,3 +111,15 @@ Profissionais autenticados abrem automaticamente o painel. A prévia demonstrati
 Visão geral com KPIs, calendário mensal e serviços por dia, próximas solicitações, detalhes e aceite/recusa/conclusão, histórico com busca/filtro/CSV, pagamentos por serviço e configuração de oferta/disponibilidade. Datas da agenda em America/Sao_Paulo.
 
 Cobranças confirmadas são valores brutos pagos pelos clientes, não repasses ao profissional. Repasses reais são mostrados como não disponíveis enquanto Stripe Connect não for integrado. Fixtures de repasses são apenas ilustrações, sem estabelecer comissão comercial. A seleção de mês organiza os serviços por data do serviço; o indicador de repasses usa data do recebimento.
+
+## Área do cliente e chat
+
+A home agora oferece busca por nome/serviço, filtro e ordenação por preço; cadastro com nome/email/telefone/senha; entrada na conta; solicitação em horários livres; acompanhamento dos pedidos; cancelamento conforme regras existentes e acesso ao checkout configurado.
+
+Cliente autenticado pode buscar horários disponíveis nos próximos 60 dias. O servidor filtra reservas sobrepostas; criação revalida disponibilidade atomicamente. A lista limita-se a 200 horários por oferta.
+
+Chat bilateral vinculado a cada agendamento, disponível desde a solicitação. Clientes e profissionais acessam pelo painel de mensagens. Mensagens salvas em SQLite, limite de 2000 caracteres, atualização por polling a cada 4 segundos, leitura incremental em lotes de 100 e reenvio idempotente. Participantes definidos pelo banco; não aceitar sender_id do navegador. Terceiros recebem 404, visitantes 401. React exibe mensagens como texto, sem HTML interpretado. Sem anexos, notificações push ou indicador de leitura nesta versão.
+
+O histórico permanece consultável após conclusão/cancelamento; a política de retenção/exclusão ainda precisa ser definida antes do lançamento público. Não enviar dados de cartão ou senhas pelo chat.
+
+Prévia: `?cliente=demo` abre painel com fixtures; `?cadastro=cliente` abre a tela de cadastro. No site estático, cadastro real/chat persistente continuam indisponíveis. Mensagens de demonstração ficam só na memória da página, sem autorizações simuladas ou envio a pessoas reais. O backend Node precisa ser executado/hospedado para o fluxo real.
