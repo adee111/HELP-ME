@@ -19,8 +19,8 @@ test('cadastro, autorização, reserva, checkout e confirmação idempotente',as
  const start=Date.now()+86400000;
  assert.equal((await post(p,'/slots',{start:new Date(start).toISOString(),end:new Date(start+8*3600000).toISOString()})).status,200);
  const input={professionalId:pid,serviceId:'residential',address:'Rua de Teste, 100, Maravilha SC',start:new Date(start).toISOString(),requestKey:randomUUID()};
- assert.equal((await post(c,'/bookings',input)).status,400);
- db.prepare('UPDATE users SET approved=1 WHERE id=?').run(pid);
+ assert.equal((await post(c,'/bookings',input)).status,403);
+ db.prepare("UPDATE users SET approved=1 WHERE role='customer' OR id=?").run(pid);
  const first=await post(c,'/bookings',input);assert.equal(first.status,201);const id=first.body.id;
  assert.equal((await post(c,'/bookings',input)).body.id,id);
  assert.equal((await post(other,'/bookings',{...input,requestKey:randomUUID(),start:new Date(start+3600000).toISOString()})).status,409);
@@ -39,6 +39,8 @@ test('cadastro, autorização, reserva, checkout e confirmação idempotente',as
  for(let i=0;i<2;i++)assert.equal((await request(app).post('/api/stripe/webhook').set('Content-Type','application/json').set('stripe-signature',signature).send(payload)).status,200);
  assert.equal(db.prepare('SELECT payment FROM bookings WHERE id=?').get(id).payment,'paid');
  assert.equal(db.prepare('SELECT COUNT(*) n FROM stripe_events').get().n,1);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM payment_ledger').get().n,1);
+ assert.equal(db.prepare('SELECT amount FROM payment_ledger').get().amount,18000);
  assert.equal((await request(app).post('/api/auth/register').send({})).status,403);
  db.close();
 });

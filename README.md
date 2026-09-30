@@ -123,3 +123,14 @@ Chat bilateral vinculado a cada agendamento, disponível desde a solicitação. 
 O histórico permanece consultável após conclusão/cancelamento; a política de retenção/exclusão ainda precisa ser definida antes do lançamento público. Não enviar dados de cartão ou senhas pelo chat.
 
 Prévia: `?cliente=demo` abre painel com fixtures; `?cadastro=cliente` abre a tela de cadastro. No site estático, cadastro real/chat persistente continuam indisponíveis. Mensagens de demonstração ficam só na memória da página, sem autorizações simuladas ou envio a pessoas reais. O backend Node precisa ser executado/hospedado para o fluxo real.
+
+
+### Administração
+
+A prévia `/?admin=demo` usa dados fictícios e alterações temporárias. No servidor, cadastre uma conta e execute `npm run grant-admin -- email-da-conta` com acesso ao banco e ao ambiente do servidor para conceder o primeiro acesso administrativo. Nenhum cadastro público pode atribuir esse privilégio. Contas administrativas devem ser gerenciadas pelo operador do servidor.
+
+Clientes novos precisam de aprovação antes de agendar ou pagar. O painel permite revisar clientes e prestadores (aprovar, recusar, suspender ou devolver à fila), exige justificativa e registra a decisão com autor e data. Contas recusadas ou suspensas não podem realizar novas operações. A suspensão não cancela agendamentos nem estorna pagamentos.
+
+O financeiro lista pagamentos brutos confirmados pelo webhook assinado e idempotente em modo de teste. Comissões, tarifas Stripe, estornos e repasses ainda não são sincronizados. Pagamentos antigos sem registro no novo livro de movimentações não possuem data de recebimento atribuída. Não há confirmação manual de pagamento. O painel não expõe o conteúdo das conversas privadas.
+
+A prévia hospedada é estática; autenticação, aprovações, chat e banco funcionam com o servidor Node e seu SQLite, que ainda precisam ser hospedados para uso real.

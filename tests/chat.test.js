@@ -12,7 +12,7 @@ test('chat privado, persistente, idempotente e disponibilidade sem conflitos',as
  const post=(agent,path,body)=>agent.post('/api'+path).set('Origin','http://localhost:5173').send(body);
  const register=(agent,email,role)=>post(agent,'/auth/register',{name:'Teste do chat',email,role,password:'senha-teste-forte-1234',phone:'49999999999'});
  const cr=await register(customer,'chatcustomer@example.com','customer');const pr=await register(pro,'chatpro@example.com','professional');await register(outsider,'chatother@example.com','customer');
- const pid=pr.body.user.id;db.prepare('UPDATE users SET approved=1 WHERE id=?').run(pid);
+ const pid=pr.body.user.id;db.prepare("UPDATE users SET approved=1 WHERE role='customer' OR id=?").run(pid);
  await post(pro,'/offers',{serviceId:'residential',price:18000,duration:120});
  const start=Math.ceil((Date.now()+86400000)/1800000)*1800000;
  await post(pro,'/slots',{start:new Date(start).toISOString(),end:new Date(start+4*3600000).toISOString()});
