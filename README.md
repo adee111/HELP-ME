@@ -129,7 +129,7 @@ Prévia: `?cliente=demo` abre painel com fixtures; `?cadastro=cliente` abre a te
 
 A prévia `/?admin=demo` usa dados fictícios e alterações temporárias. Na alternativa local SQLite, cadastre uma conta e execute `npm run grant-admin -- email-da-conta`. No Supabase, use o procedimento de operador documentado abaixo, após login e criação do perfil. Nenhum cadastro público pode atribuir esse privilégio. Contas administrativas devem ser gerenciadas pelo operador do servidor.
 
-Clientes novos precisam de aprovação antes de agendar ou pagar. O painel permite revisar clientes e prestadores (aprovar, recusar, suspender ou devolver à fila), exige justificativa e registra a decisão com autor e data. Contas recusadas ou suspensas não podem realizar novas operações. A suspensão não cancela agendamentos nem estorna pagamentos.
+Clientes não precisam de aprovação administrativa: novos cadastros e clientes pendentes são liberados automaticamente após a autenticação exigida. Somente prestadores passam pela fila de aprovação. O painel permite bloquear ou reativar clientes e revisar prestadores (aprovar, recusar, suspender ou devolver à fila), exige justificativa e registra a decisão com autor e data. Contas recusadas ou suspensas não podem realizar novas operações. A suspensão não cancela agendamentos nem estorna pagamentos.
 
 O financeiro lista pagamentos brutos confirmados pelo webhook assinado e idempotente em modo de teste. Comissões, tarifas Stripe, estornos e repasses ainda não são sincronizados. Pagamentos antigos sem registro no novo livro de movimentações não possuem data de recebimento atribuída. Não há confirmação manual de pagamento. O painel não expõe o conteúdo das conversas privadas.
 

@@ -19,7 +19,7 @@ test('cadastro, autorização, reserva e bloqueio do checkout local sem Connect'
  const start=Date.now()+86400000;
  assert.equal((await post(p,'/slots',{start:new Date(start).toISOString(),end:new Date(start+8*3600000).toISOString()})).status,200);
  const input={professionalId:pid,serviceId:'residential',address:'Rua de Teste, 100, Maravilha SC',start:new Date(start).toISOString(),requestKey:randomUUID()};
- assert.equal((await post(c,'/bookings',input)).status,403);
+ assert.equal((await post(c,'/bookings',input)).status,400);
  db.prepare("UPDATE users SET approved=1 WHERE role='customer' OR id=?").run(pid);
  const first=await post(c,'/bookings',input);assert.equal(first.status,201);const id=first.body.id;
  assert.equal((await post(c,'/bookings',input)).body.id,id);
