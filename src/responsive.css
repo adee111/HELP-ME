@@ -1,0 +1,135 @@
+/* Shared viewport rules for discovery, account screens and dashboards. */
+:root{font-size:16px;line-height:1.5}
+body{min-width:320px}
+button,input,select,textarea{min-height:44px;font-size:1rem}
+button{touch-action:manipulation}
+textarea{font:inherit;max-width:100%}
+img,svg{max-width:100%}
+main,section,article,form,nav{min-width:0}
+h1,h2,h3,p,.notice,.demo-banner,.admin-banner{overflow-wrap:anywhere}
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+.login{margin:clamp(12px,4vw,48px) auto;width:100%}
+.customer-main,.provider-main,.admin-main{padding-bottom:max(32px,env(safe-area-inset-bottom))}
+.customer-header nav,.provider-nav nav,.admin-sidebar nav{scrollbar-width:thin}
+.customer-header nav button,.provider-nav nav button,.admin-sidebar nav button{font-size:.875rem}
+.customer-session{min-width:0;flex-wrap:wrap}
+.customer-session span{overflow-wrap:anywhere}
+.directory-filters label,.result-controls,.appointment-info,.chat-title>div:nth-child(2){min-width:0}
+.directory-filters select{width:100%}
+.category-switch{flex-wrap:wrap}
+.customer-intro h1{font-size:clamp(2rem,5.2vw,3.875rem)}
+.customer-intro p,.chat-message p{font-size:1rem}
+.professional-row,.offer-details,.offer-price span,.service-category,.service-cover .badge,
+.directory-title span,.filter-toggle,.result-controls select,.directory-filters label,
+.provider-location,.customer-help p{font-size:.875rem}
+.offer-details{flex-wrap:wrap;gap:8px 16px}
+.offer-bottom{flex-wrap:wrap}
+.offer-bottom button{font-size:.875rem;min-height:44px}
+.provider-card-body,.provider-card-top{min-width:0}
+.professional-row{overflow-wrap:anywhere}
+.kpis span,.kpis small,.calendar-week span,.calendar-legend,.calendar-footnote,
+.month-picker,.appointment small,.status,.admin-card small,.admin-toolbar label,
+.admin-table th,.admin-table,.admin-stats article span,.chat-threads small,.chat-note{font-size:.875rem}
+.calendar-day{padding:6px 2px;min-height:44px}
+.appointment-info strong,.appointment>strong{font-size:1rem}
+.panel-heading,.dashboard-footer,.admin-actions{flex-wrap:wrap}
+.table-wrap,.admin-table{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.table-wrap:focus-visible,.admin-table:focus-visible{outline:3px solid #7bcaac;outline-offset:3px}
+.detail-dialog,.booking-dialog,.admin-overlay .admin-card{max-height:calc(100dvh - 32px);overscroll-behavior:contain}
+.detail-dialog dd{overflow-wrap:anywhere}
+.chat-title{flex-wrap:wrap}
+.chat-title .avatar{flex-shrink:0}
+.chat-message{min-width:0}
+.chat-messages{height:clamp(260px,45dvh,440px)}
+.chat-compose textarea{font-size:1rem}
+.chat-compose button{flex-shrink:0}
+.admin-heading>div{min-width:0}
+.admin-toolbar>input{min-width:0;flex-basis:220px}
+.admin-toolbar label{flex:1 1 160px}
+.admin-toolbar select{width:100%}
+.admin-user strong,.provider-account strong{overflow-wrap:anywhere}
+@media(min-width:1600px){.customer-main{max-width:1320px}.provider-cards{gap:24px}.admin-main{max-width:1600px;margin-inline:auto}}
+@media(max-width:1000px){
+ .customer-header nav{flex-basis:100%;order:3;justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap}
+ .customer-header nav button{flex-shrink:0;white-space:nowrap}
+ .customer-header .logo{margin-right:auto}
+ .customer-main{padding-inline:24px}
+}
+@media(max-width:900px){
+ .provider-shell,.admin-shell{display:block}
+ .provider-nav,.admin-sidebar{position:static;width:100%;height:auto;padding:18px 24px;gap:12px}
+ .provider-nav .logo,.admin-sidebar .logo{padding:0;margin:0;align-self:flex-start}
+ .nav-caption,.admin-sidebar>small{display:none}
+ .provider-nav nav,.admin-sidebar nav{display:flex;flex-direction:row;gap:8px;overflow-x:auto;padding:3px 2px 8px}
+ .provider-nav nav button,.admin-sidebar nav button{white-space:nowrap;flex-shrink:0;padding:11px 14px}
+ .provider-account,.admin-user{display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px;margin:0;padding:12px 0 0;border-top:1px solid #387665}
+ .provider-account .avatar{display:none}
+ .provider-account small,.admin-user small{margin-right:auto;font-size:.875rem}
+ .provider-account button,.admin-user button{margin:0;margin-left:auto}
+ .provider-main,.admin-main{padding:24px}
+ .admin-heading{flex-wrap:wrap;gap:16px}
+ .admin-grid{grid-template-columns:1fr}
+ .calendar-layout{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+ header{padding:16px;gap:12px;flex-wrap:wrap}
+ main{padding:16px}
+ .card{padding:20px}
+ .customer-header{padding:16px;gap:12px}
+ .customer-header .logo{font-size:1.625rem}
+ .customer-session{gap:8px;font-size:.875rem}
+ .customer-session button{padding:10px 12px;font-size:.875rem}
+ .customer-header nav{justify-content:flex-start;gap:6px}
+ .customer-header nav button{padding:11px 12px}
+ .customer-main,.provider-main,.admin-main{padding:18px 16px 32px}
+ .customer-intro{padding:24px 0}
+ .customer-intro h1{letter-spacing:-1px;line-height:1.15}
+ .search-box{margin-top:20px}
+ .search-box input{font-size:1rem}
+ .category-switch{gap:8px}
+ .category-switch button{padding:10px 14px;font-size:.875rem}
+ .directory-title{align-items:stretch;flex-direction:column;gap:14px}
+ .result-controls{flex-wrap:wrap;gap:8px}
+ .result-controls select{flex:1 1 150px;max-width:none;width:100%}
+ .directory-filters{grid-template-columns:1fr}
+ .provider-cards{grid-template-columns:1fr}
+ .customer-help{padding:20px}
+ .customer-help>span{display:none}
+ .provider-nav,.admin-sidebar{padding:16px}
+ .provider-top{flex-wrap:wrap;gap:8px}
+ .dashboard-heading{align-items:stretch;gap:16px}
+ .dashboard-heading h1,.admin-heading h1{font-size:1.75rem;line-height:1.2}
+ .dashboard-heading p,.admin-heading p{font-size:1rem}
+ .month-picker{width:100%;min-width:0}
+ .kpis,.admin-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .kpis article,.admin-stats article{padding:16px 12px}
+ .kpis strong,.admin-stats article strong{font-size:clamp(1.25rem,5vw,1.6rem);overflow-wrap:anywhere}
+ .panel,.admin-card{padding:18px 14px}
+ .panel-heading{align-items:flex-start}
+ .panel-heading h2{font-size:1.125rem}
+ .calendar-grid{gap:3px}
+ .calendar-day{height:54px;font-size:.875rem}
+ .calendar-legend{gap:10px}
+ .table-filters{flex-direction:column;gap:12px}
+ .appointment{gap:10px;flex-wrap:wrap}
+ .appointment-info{flex:1 1 130px}
+ .dashboard-footer{align-items:flex-start}
+ .admin-toolbar{gap:12px}
+ .admin-toolbar>input,.admin-toolbar label{flex-basis:100%;max-width:none}
+ .admin-metric{gap:12px;align-items:flex-start;flex-wrap:wrap}
+ .admin-actions>button{flex:1}
+ .service-chat{grid-template-columns:1fr;min-height:0}
+ .chat-threads{border-right:0;border-bottom:1px solid #e1e9e4;max-height:210px;overflow-y:auto;padding:16px}
+ .chat-title{padding:16px}
+ .chat-messages{padding:16px}
+ .chat-message{max-width:95%;padding:12px}
+ .chat-compose{padding:12px;gap:8px;flex-wrap:wrap}
+ .chat-compose textarea{flex:1 1 180px}
+ .chat-note{padding-inline:12px}
+ .booking-overlay,.detail-overlay,.admin-overlay{padding:12px}
+ .booking-dialog,.detail-dialog,.admin-overlay .admin-card{padding:24px 18px;max-height:calc(100dvh - 24px);width:100%}
+ .detail-dialog dl,.customer-profile dl{grid-template-columns:1fr;gap:8px}
+ .detail-dialog dd,.customer-profile dd{margin-bottom:12px}
+}
+@media(max-width:360px){.kpis,.admin-stats{grid-template-columns:1fr}.customer-session{width:100%;justify-content:flex-end}.calendar-week span{font-size:.75rem}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important}}

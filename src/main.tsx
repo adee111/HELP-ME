@@ -5,6 +5,7 @@ import Dashboard from './features/professional-dashboard/Dashboard';
 import AdminDashboard from './features/admin/AdminDashboard';
 import CustomerArea from './features/customer/CustomerArea';
 import './style.css';
+import './responsive.css';
 type User={id:string;name:string;email:string;phone:string;role:string;approved:boolean;isAdmin:boolean};
 type Service={id:string;name:string;price:number;duration:number};
 type Offer={professional_id:string;service_id:string;professional_name:string;service_name:string;price:number;duration:number};
