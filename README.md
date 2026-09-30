@@ -165,3 +165,7 @@ commit;
 **Stripe:** checkout de teste e webhook estão implementados; a função responde explicitamente 503 enquanto os segredos específicos HELPME_* não estiverem configurados. Segredos de outras funções antigas não são reutilizados automaticamente.
 
 **Auditoria do projeto anterior:** o Security Advisor sinaliza funções SECURITY DEFINER antigas (`public.is_admin`, `public.enforce_profile_role`) acessíveis pelas roles de navegador e proteção contra senhas vazadas desabilitada. As novas funções não usam SECURITY DEFINER. Revise as dependências da implementação antiga antes de restringir suas funções.
+
+### Busca simplificada
+
+A descoberta de serviços oferece categorias Todos/Limpeza/Babás, pesquisa por nome ou serviço sem distinção de acentos, filtros opcionais por tipo, valor máximo e duração, e ordenação por preço/nome. Os resultados usam somente ofertas reais de contas aprovadas; `?cliente=demo` continua explicitamente demonstrativo. O catálogo inclui Babá com referência de R$120/4h; profissionais definem preços e durações nas suas próprias ofertas. Não há ofertas de babás reais inseridas automaticamente.

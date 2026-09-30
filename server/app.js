@@ -27,7 +27,7 @@ export function createApp({dbPath=process.env.DATABASE_PATH||'data/helpme.sqlite
  CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit(created_at);
  CREATE INDEX IF NOT EXISTS idx_messages_booking_seq ON messages(booking_id,seq);
  `);
- for(const s of [['residential','Limpeza residencial',18000,240],['deep','Limpeza pesada',26000,360]])db.prepare('INSERT OR IGNORE INTO services VALUES(?,?,?,?)').run(...s);
+ for(const s of [['residential','Limpeza residencial',18000,240],['deep','Limpeza pesada',26000,360],['babysitting','Babá',12000,240]])db.prepare('INSERT OR IGNORE INTO services VALUES(?,?,?,?)').run(...s);
  const key=process.env.STRIPE_SECRET_KEY;
  if(key && ! /^(sk|rk)_test_/.test(key))throw new Error('Esta versão aceita somente Stripe em modo de teste.');
  const stripe=stripeClient||(key?new Stripe(key):null);
