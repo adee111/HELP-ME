@@ -184,3 +184,9 @@ Registre webhook de eventos das contas conectadas para `checkout.session.complet
 `helpme.payment_ledger.platform_fee_amount` registra a comissão associada à cobrança confirmada; não é confirmação de depósito bancário. `provider_gross_amount` são os 85% antes das tarifas Stripe. Os saldos bancários, tarifas efetivas e estornos devem ser conciliados com Stripe; não são inferidos automaticamente.
 
 A alternativa local SQLite não cria mais Checkout: retorna 503 e não permite que pagamentos caiam integralmente na plataforma. Use o backend Supabase conectado para testar este fluxo. Links de teste antigos em `stripe-sandbox-links.json` são referências históricas sem split; não representam este fluxo e não são usados pela interface.
+
+## Qualidade de código
+
+Execute `npm run lint` para analisar frontend, backend Node e Edge Functions do Supabase. Use `npm run lint:fix` para aplicar correções automáticas. A configuração está em `eslint.config.js`, com regras para JavaScript, TypeScript e React Hooks.
+
+O TypeScript está fixado na série 6.0, compatível com typescript-eslint. Antes de enviar alterações, execute também `npm run build` e `npm test`.

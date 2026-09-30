@@ -17,7 +17,8 @@ function App(){
  async function refresh(){const [s,o,c]=await Promise.all([api('/services'),api('/offers'),api('/config')]);setServices(s);setOffers(o);setStripe(c.stripeConfigured);if(user){const [b,m]=await Promise.all([api('/bookings'),api('/me')]);setBookings(b);setUser(m.user)}}
  useEffect(()=>{let active=true;Promise.all([api('/me').catch(()=>({user:null})),api('/services'),api('/offers'),api('/config')]).then(([u,s,o,c])=>{if(active){setUser(u.user);setServices(s);setOffers(o);setStripe(c.stripeConfigured)}}).catch(e=>{if(active)setMessage(e.message)}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[]);
  useEffect(()=>{if(!supabase)return;const {data:{subscription}}=supabase.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){setUser(null);setBookings([])}else if(event==='SIGNED_IN')queueMicrotask(()=>{api('/me').then(v=>setUser(v.user)).catch(e=>setMessage(e.message))})});return()=>subscription.unsubscribe()},[]);
- useEffect(()=>{if(!user)return;let active=true;api('/bookings').then(b=>{if(active)setBookings(b)}).catch(e=>{if(active)setMessage(e.message)});return()=>{active=false}},[user?.id]);
+ const userId=user?.id;
+ useEffect(()=>{if(!userId)return;let active=true;api('/bookings').then(b=>{if(active)setBookings(b)}).catch(e=>{if(active)setMessage(e.message)});return()=>{active=false}},[userId]);
  async function mutation(fn:()=>Promise<void>){setBusy(true);setMessage('');try{await fn()}finally{setBusy(false)}}
  async function logout(){try{await mutation(async()=>{await api('/auth/logout',{});setUser(null);setBookings([])})}catch(e){setMessage(e instanceof Error?e.message:'Erro ao sair.')}}
  function enter(signup:boolean){setRegister(signup);setAuthScreen(true);setMessage('')}
