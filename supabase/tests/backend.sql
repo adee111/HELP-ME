@@ -3,6 +3,7 @@ do $$declare a uuid:=gen_random_uuid();c uuid:=gen_random_uuid();p uuid:=gen_ran
  insert into auth.users(id,email,email_confirmed_at) values(a,'admin-'||a||'@example.invalid',now()),(c,'client-'||c||'@example.invalid',now()),(p,'provider-'||p||'@example.invalid',now()),(x,'outside-'||x||'@example.invalid',now());
  perform set_config('role','service_role',true);
  perform public.helpme_ensure_profile(a,'admin@example.invalid','Administrador teste','49999999999','customer');perform public.helpme_ensure_profile(c,'client@example.invalid','Cliente teste','49999999999','customer');perform public.helpme_ensure_profile(p,'provider@example.invalid','Prestador teste','49999999999','professional');perform public.helpme_ensure_profile(x,'outside@example.invalid','Outro teste','49999999999','customer');
+ insert into helpme.connected_accounts(professional_id,account_id) values(p,'acct_Test'||replace(p::text,'-',''));
  insert into helpme.admins values(a);update helpme.profiles set account_status='approved' where id=a;
  begin perform public.helpme_api(c,'/admin','GET');raise exception 'FAILED: unauthorized admin access';exception when sqlstate 'PT403' then null;end;
  begin perform public.helpme_api(c,'/bookings','POST','{}');raise exception 'FAILED: pending booking';exception when sqlstate 'PT403' then null;end;
@@ -18,11 +19,12 @@ do $$declare a uuid:=gen_random_uuid();c uuid:=gen_random_uuid();p uuid:=gen_ran
  if jsonb_array_length(public.helpme_api(c,'/bookings/'||bid||'/messages','GET'))<>1 then raise exception 'FAILED: duplicate messages';end if;
  begin perform public.helpme_api(x,'/bookings/'||bid||'/messages','GET');raise exception 'FAILED: chat privacy';exception when sqlstate 'PT404' then null;end;
  perform public.helpme_api(p,'/bookings/'||bid||'/status','POST','{"status":"accepted"}');
- perform public.helpme_api(c,'/checkout_prepare','POST',jsonb_build_object('bookingId',bid));
+ perform public.helpme_direct_checkout(c,'/checkout_prepare',jsonb_build_object('bookingId',bid));
  begin perform public.helpme_api(c,'/bookings/'||bid||'/status','POST','{"status":"cancelled"}');raise exception 'FAILED: checkout lock';exception when sqlstate 'PT409' then null;end;
- perform public.helpme_api(c,'/checkout_complete','POST',jsonb_build_object('bookingId',bid,'sessionId','cs_test_'||bid,'url','https://checkout.stripe.com/test-fixture'));
- perform public.helpme_confirm_payment('evt_'||bid,'cs_test_'||bid,bid,18000,'brl',false);
- perform public.helpme_confirm_payment('evt_'||bid,'cs_test_'||bid,bid,18000,'brl',false);
+ perform public.helpme_direct_checkout(c,'/checkout_complete',jsonb_build_object('bookingId',bid,'sessionId','cs_test_'||bid,'url','https://checkout.stripe.com/test-fixture'));
+ perform public.helpme_confirm_payment('evt_'||bid,'cs_test_'||bid,bid,18000,'brl',false,'acct_Test'||replace(p::text,'-',''),2700);
+ perform public.helpme_confirm_payment('evt_'||bid,'cs_test_'||bid,bid,18000,'brl',false,'acct_Test'||replace(p::text,'-',''),2700);
+ if (select platform_fee_amount from helpme.payment_ledger where booking_id=bid)<>2700 or (select provider_gross_amount from helpme.payment_ledger where booking_id=bid)<>15300 then raise exception 'FAILED: direct charge split';end if;
  if (select count(*) from helpme.payment_ledger where booking_id=bid)<>1 then raise exception 'FAILED: payment idempotence';end if;
  perform public.helpme_api(a,'/admin/users/'||c||'/review','POST','{"status":"suspended","note":"Suspensão de teste"}');
  begin perform public.helpme_api(c,'/bookings/'||bid||'/messages','POST',jsonb_build_object('body','bloqueada','clientMessageId',gen_random_uuid()));raise exception 'FAILED: suspension';exception when sqlstate 'PT403' then null;end;

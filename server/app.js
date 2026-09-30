@@ -79,13 +79,13 @@ export function createApp({dbPath=process.env.DATABASE_PATH||'data/helpme.sqlite
  const bookings=db.prepare('SELECT b.id,b.start,b.end,b.price,b.status,b.payment,s.name service_name,c.name customer_name,p.name professional_name FROM bookings b JOIN services s ON s.id=b.service_id JOIN users c ON c.id=b.customer_id JOIN users p ON p.id=b.professional_id ORDER BY b.start DESC').all();
  const payments=db.prepare('SELECT l.*,c.name customer_name,p.name professional_name,s.name service_name FROM payment_ledger l JOIN bookings b ON b.id=l.booking_id JOIN users c ON c.id=b.customer_id JOIN users p ON p.id=b.professional_id JOIN services s ON s.id=b.service_id ORDER BY l.confirmed_at DESC').all();
  const audit=db.prepare('SELECT a.*,u.name actor_name,t.name target_name FROM admin_audit a JOIN users u ON u.id=a.actor_id JOIN users t ON t.id=a.target_id ORDER BY a.created_at DESC LIMIT 200').all();
- res.json({users,bookings,payments,audit,services:db.prepare('SELECT s.*,COUNT(o.professional_id) offer_count FROM services s LEFT JOIN offers o ON o.service_id=s.id GROUP BY s.id').all(),messageCount:db.prepare('SELECT COUNT(*) n FROM messages').get().n,stripeConfigured:!!stripe&&!!webhookSecret,testMode:true});
+ res.json({users,bookings,payments,audit,services:db.prepare('SELECT s.*,COUNT(o.professional_id) offer_count FROM services s LEFT JOIN offers o ON o.service_id=s.id GROUP BY s.id').all(),messageCount:db.prepare('SELECT COUNT(*) n FROM messages').get().n,stripeConfigured:false,testMode:true});
  });
  app.post('/api/admin/users/:id/review',auth,admin,(req,res,next)=>{try{
  const v=z.object({status:z.enum(['approved','rejected','suspended','pending']),note:z.string().trim().min(2).max(500)}).parse(req.body);
  tx(()=>{const target=db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);if(!target)fail(404,'Conta não encontrada.');if(isAdmin(target))fail(409,'Contas administrativas são gerenciadas pelo operador do servidor.');const previous=accountStatus(target);if(previous===v.status)fail(409,'A conta já possui esse status.');db.prepare('INSERT INTO account_reviews VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET status=excluded.status').run(target.id,v.status);db.prepare('UPDATE users SET approved=? WHERE id=?').run(v.status==='approved'?1:0,target.id);db.prepare('INSERT INTO admin_audit VALUES(?,?,?,?,?,?,?,?)').run(randomUUID(),req.user.id,target.id,'account_review',previous,v.status,v.note,Date.now());});res.json({ok:true});
  }catch(e){next(e)}});
- app.get('/api/config',(req,res)=>res.json({stripeConfigured:!!stripe&&!!webhookSecret,testMode:true}));
+ app.get('/api/config',(req,res)=>res.json({stripeConfigured:false,testMode:true}));
  app.get('/api/services',(req,res)=>res.json(db.prepare('SELECT * FROM services').all()));
  app.get('/api/professionals',(req,res)=>res.json(db.prepare("SELECT id,name FROM users WHERE role='professional' AND approved=1").all()));
  app.get('/api/offers',(req,res)=>res.json(db.prepare('SELECT o.*,u.name professional_name,s.name service_name FROM offers o JOIN users u ON u.id=o.professional_id JOIN services s ON s.id=o.service_id WHERE u.approved=1').all()));
@@ -114,21 +114,7 @@ export function createApp({dbPath=process.env.DATABASE_PATH||'data/helpme.sqlite
  const id=randomUUID();db.prepare('INSERT INTO bookings(id,customer_id,professional_id,service_id,address,start,end,price,request_key) VALUES(?,?,?,?,?,?,?,?,?)').run(id,req.user.id,v.professionalId,v.serviceId,v.address,start,end,o.price,v.requestKey);return db.prepare('SELECT * FROM bookings WHERE id=?').get(id);
  });res.status(201).json(b)}catch(e){next(e)}});
  app.post('/api/bookings/:id/status',auth,(req,res,next)=>{try{const {status}=z.object({status:z.enum(['accepted','rejected','cancelled','completed'])}).parse(req.body);tx(()=>{const b=db.prepare('SELECT * FROM bookings WHERE id=?').get(req.params.id);if(!b||![b.customer_id,b.professional_id].includes(req.user.id))fail(404,'Pedido não encontrado.');if(checkoutLocks.has(b.id))fail(409,'Checkout em criação; tente novamente.');if(status==='cancelled'){if(!['requested','accepted'].includes(b.status)||b.start<=Date.now()||b.payment==='paid'||b.session_id)fail(409,'Cancelamento indisponível: pedido iniciado ou checkout aberto.')}else{if(req.user.id!==b.professional_id)fail(403,'Somente profissional designado.');if(['accepted','rejected'].includes(status)&&(b.status!=='requested'||b.start<=Date.now()))fail(409,'Transição inválida.');if(status==='completed'&&(b.status!=='accepted'||b.end>Date.now()))fail(409,'Serviço ainda não finalizado.')}db.prepare('UPDATE bookings SET status=? WHERE id=?').run(status,b.id)});res.json({ok:true})}catch(e){next(e)}});
- app.post('/api/checkout',auth,async(req,res,next)=>{try{
- if(!req.user.approved)fail(403,'Aguarde a aprovação da sua conta.');
- if(!stripe||!webhookSecret)fail(503,'Configure as chaves Stripe de teste e o webhook no servidor.');
- const {bookingId}=z.object({bookingId:z.uuid()}).parse(req.body);const b=db.prepare('SELECT b.*,s.name service_name FROM bookings b JOIN services s ON s.id=b.service_id WHERE b.id=? AND customer_id=?').get(bookingId,req.user.id);
- if(!b)fail(404,'Pedido não encontrado.');if(b.status!=='accepted'||b.payment==='paid'||b.start<=Date.now())fail(409,'Pedido não elegível para pagamento.');
- if(b.checkout_url)return res.json({url:b.checkout_url});
- if(checkoutLocks.has(b.id))fail(409,'Checkout em criação.');
- checkoutLocks.add(b.id);
- let session;try{session=await stripe.checkout.sessions.create({mode:'payment',line_items:[{price_data:{currency:'brl',unit_amount:b.price,product_data:{name:b.service_name}},quantity:1}],metadata:{bookingId:b.id},client_reference_id:b.id,success_url:`${appUrl}/?payment=return`,cancel_url:`${appUrl}/?payment=cancel`,expires_at:Math.floor(Date.now()/1000)+1800},{idempotencyKey:`booking-${b.id}`});}catch(e){checkoutLocks.delete(b.id);throw e}
- if(!session.url){checkoutLocks.delete(b.id);fail(502,'Checkout indisponível.');}
- // Não permitir cancelamento durante a janela assíncrona de criação.
- const current=db.prepare('SELECT status FROM bookings WHERE id=?').get(b.id);
- if(current.status!=='accepted'){await stripe.checkout.sessions.expire(session.id);fail(409,'Pedido alterado.');}
- db.prepare('UPDATE bookings SET session_id=?,checkout_url=? WHERE id=?').run(session.id,session.url,b.id);checkoutLocks.delete(b.id);res.json({url:session.url})
- }catch(e){next(e)}});
+ app.post('/api/checkout',auth,(req,res)=>res.status(503).json({error:'Pagamentos disponíveis somente no backend Supabase com Stripe Connect e cobrança direta.'}));
  app.use(express.static(resolve('dist')));
  app.use((err,req,res,next)=>{if(err instanceof z.ZodError)return res.status(400).json({error:'Confira os campos informados.',fields:err.issues.map(x=>x.path.join('.'))});res.status(err.status||500).json({error:err.status?err.message:'Não foi possível concluir. Tente novamente.'})});
  return {app,db};

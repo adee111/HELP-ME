@@ -1,3 +1,4 @@
+import {directCheckout} from '../_shared/direct-charge.ts';
 import {createClient} from 'npm:@supabase/supabase-js@2.117.2';
 import Stripe from 'npm:stripe@22.6.2';
 const site='https://helpme-previa-adeemar.aqua-aphid-8990.chatgpt.site';
@@ -17,7 +18,7 @@ Deno.serve(async req=>{
  const stripeKey=Deno.env.get('HELPME_STRIPE_SECRET_KEY')||'';
  const webhookSecret=Deno.env.get('HELPME_STRIPE_WEBHOOK_SECRET')||'';
  const stripeReady=/^(sk|rk)_test_/.test(stripeKey)&&!!webhookSecret;
- if(route==='/config'&&verb==='GET')return respond({stripeConfigured:stripeReady,testMode:true,backend:'supabase'});
+ if(route==='/config'&&verb==='GET')return respond({stripeConfigured:stripeReady,testMode:true,backend:'supabase',chargePattern:'direct',platformFeePercent:15,processingFeesPaidBy:'professional'});
  const publicRoute=verb==='GET'&&['/services','/offers','/professionals'].includes(route);
  let actor:string|null=null;
  if(!publicRoute){
@@ -34,9 +35,23 @@ Deno.serve(async req=>{
  }
  const payload={...Object.fromEntries(path.searchParams),...(input.body||{})};
  // Internal financial transitions are never callable by a client-selected path.
- const allowed=['/me','/services','/offers','/professionals','/slots','/bookings','/admin','/checkout'];
+ const allowed=['/me','/services','/offers','/professionals','/slots','/bookings','/admin','/checkout','/connect/status','/connect/onboard'];
  if(!allowed.includes(route)&&!/^\/(bookings\/[^/]+\/(messages|status)|professionals\/[^/]+\/availability|admin\/users\/[^/]+\/review)$/.test(route))return respond({error:'Rota não encontrada.'},404);
- const rpc=async(r:string,p:unknown)=>{const {data,error}=await service.rpc('helpme_api',{actor,route:r,verb,payload:p});if(error)throw error;return data};
+ const rpc=async(r:string,p:unknown)=>{const {data,error}=r.startsWith('/checkout_')?await service.rpc('helpme_direct_checkout',{actor,phase:r,payload:p}):await service.rpc('helpme_api',{actor,route:r,verb,payload:p});if(error)throw error;return data};
+ if(route.startsWith('/connect/')){
+ const {data:profile,error}=await service.rpc('helpme_connect_profile',{actor});if(error)throw error;
+ if(!stripeReady)return respond({configured:false,ready:false,error:'Configure as chaves Stripe de teste e o webhook Connect.'},route==='/connect/status'?200:503);
+ const stripe=new Stripe(stripeKey,{httpClient:Stripe.createFetchHttpClient()});const platform=await stripe.accounts.retrieve(Deno.env.get('HELPME_STRIPE_PLATFORM_ACCOUNT_ID')||'acct_1UCJzVRpKDNHFrEI');if(platform.country!=='BR')return respond({error:'A plataforma Stripe precisa estar sediada no Brasil para cobrar taxas de prestadores brasileiros.'},409);let accountId=profile.account_id;
+ if(route==='/connect/onboard'&&verb==='POST'){
+ if(!accountId){const account=await stripe.v2.core.accounts.create({contact_email:profile.email,display_name:profile.name,identity:{country:'br'},dashboard:'full',defaults:{currency:'brl',responsibilities:{fees_collector:'stripe',losses_collector:'stripe'}},configuration:{merchant:{capabilities:{card_payments:{requested:true}}}}},{idempotencyKey:'helpme-provider-'+actor});const {error:save}=await service.rpc('helpme_connect_save',{actor,account_id:account.id});if(save)throw save;accountId=account.id;}
+ const link=await stripe.v2.core.accountLinks.create({account:accountId,use_case:{type:'account_onboarding',account_onboarding:{configurations:['merchant'],refresh_url:site+'/?connect=refresh',return_url:site+'/?connect=return'}}});return respond({url:link.url});
+ }
+ if(route==='/connect/status'&&verb==='GET'){
+ if(!accountId)return respond({configured:true,ready:false});
+ const a=await stripe.v2.core.accounts.retrieve(accountId,{include:['configuration.merchant','defaults','identity']});return respond({configured:true,ready:a.identity?.country?.toUpperCase()==='BR'&&a.dashboard==='full'&&a.defaults?.responsibilities?.fees_collector==='stripe'&&a.configuration?.merchant?.capabilities?.card_payments?.status==='active',accountId});
+ }
+ return respond({error:'Método inválido.'},405);
+ }
  if(route==='/checkout'){
  if(verb!=='POST')return respond({error:'Método inválido.'},405);
  if(!stripeReady)return respond({error:'Checkout Stripe de teste ainda não configurado neste backend.'},503);
@@ -44,7 +59,11 @@ Deno.serve(async req=>{
  if(b.checkout_url)return respond({url:b.checkout_url});
  const stripe=new Stripe(stripeKey,{httpClient:Stripe.createFetchHttpClient()});
  try{
- const session=await stripe.checkout.sessions.create({mode:'payment',line_items:[{price_data:{currency:'brl',unit_amount:b.price,product_data:{name:b.service_name}},quantity:1}],metadata:{bookingId:b.id},client_reference_id:b.id,success_url:site+'/?payment=return',cancel_url:site+'/?payment=cancel',expires_at:Math.floor(Date.now()/1000)+1800},{idempotencyKey:'helpme-booking-'+b.id});
+ const platform=await stripe.accounts.retrieve(Deno.env.get('HELPME_STRIPE_PLATFORM_ACCOUNT_ID')||'acct_1UCJzVRpKDNHFrEI');if(platform.country!=='BR')throw {code:'PT409',message:'Conta Stripe da plataforma precisa estar sediada no Brasil.'};
+ const account=await stripe.v2.core.accounts.retrieve(b.connected_account,{include:['configuration.merchant','defaults','identity']});
+ if(account.identity?.country?.toUpperCase()!=='BR'||account.dashboard!=='full'||account.defaults?.responsibilities?.fees_collector!=='stripe'||account.defaults?.responsibilities?.losses_collector!=='stripe'||account.configuration?.merchant?.capabilities?.card_payments?.status!=='active')return await rpc('/checkout_release',{bookingId:b.id}).then(()=>respond({error:'Conta Stripe do prestador ainda não está habilitada para cobrança direta.'},409));
+ const charge=directCheckout(b,site);
+ const session=await stripe.checkout.sessions.create(charge.params,charge.options);
  if(!session.url)throw new Error('Checkout indisponível.');
  await rpc('/checkout_complete',{bookingId:b.id,sessionId:session.id,url:session.url});return respond({url:session.url});
  }catch(e){await rpc('/checkout_release',{bookingId:b.id}).catch(()=>{});throw e}

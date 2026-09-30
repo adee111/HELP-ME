@@ -169,3 +169,18 @@ commit;
 ### Busca simplificada
 
 A descoberta de serviços oferece categorias Todos/Limpeza/Babás, pesquisa por nome ou serviço sem distinção de acentos, filtros opcionais por tipo, valor máximo e duração, e ordenação por preço/nome. Os resultados usam somente ofertas reais de contas aprovadas; `?cliente=demo` continua explicitamente demonstrativo. O catálogo inclui Babá com referência de R$120/4h; profissionais definem preços e durações nas suas próprias ofertas. Não há ofertas de babás reais inseridas automaticamente.
+
+
+### Stripe Connect: cobrança direta, Help.me 15%
+
+A cobrança é criada na conta conectada do prestador (`stripeAccount`) com taxa `application_fee_amount` de 15%, arredondada em centavos. O valor total nunca é cobrado na conta Stripe da plataforma. Não há `transfer_data` nem repasse manual do valor total. O prestador recebe 85% antes das tarifas de processamento, que são de responsabilidade dele. Depósitos bancários seguem os prazos e requisitos do Stripe.
+
+As contas usam Accounts v2, painel Stripe completo, tarifas cobradas pelo Stripe do prestador e responsabilidade por saldos negativos atribuída ao Stripe. O prestador passa pelo onboarding hospedado no Stripe na seção Pagamentos do seu painel. Pendências e ajustes de cadastro ficam disponíveis pela retomada desse onboarding e pelo dashboard Stripe. Para o onboarding com componentes incorporados em uma evolução futura, incluir `notification_banner`.
+
+**Ativação pendente:** a conexão do plugin fornece acesso apenas ao sandbox. Ela não fornece uma chave permanente às funções do Supabase. Configure, em Edge Functions > Secrets, `HELPME_STRIPE_SECRET_KEY` (preferir chave restrita de teste com permissões necessárias de Connect, Accounts, Account Links, Checkout e PaymentIntents) e `HELPME_STRIPE_WEBHOOK_SECRET`. A conta da plataforma precisa ser brasileira para coletar comissões de prestadores brasileiros; o backend verifica isso. Esta versão bloqueia chaves live.
+
+Registre webhook de eventos das contas conectadas para `checkout.session.completed` e `checkout.session.async_payment_succeeded` em `https://ghtjngkdqfgpzklzcxxi.supabase.co/functions/v1/helpme-stripe-webhook`. O webhook verifica assinatura, conta conectada, referência da reserva, moeda, valor e taxa de 15% na PaymentIntent. Eventos sem conta Connect são recusados. Não substitua por um endpoint de eventos apenas da plataforma.
+
+`helpme.payment_ledger.platform_fee_amount` registra a comissão associada à cobrança confirmada; não é confirmação de depósito bancário. `provider_gross_amount` são os 85% antes das tarifas Stripe. Os saldos bancários, tarifas efetivas e estornos devem ser conciliados com Stripe; não são inferidos automaticamente.
+
+A alternativa local SQLite não cria mais Checkout: retorna 503 e não permite que pagamentos caiam integralmente na plataforma. Use o backend Supabase conectado para testar este fluxo. Links de teste antigos em `stripe-sandbox-links.json` são referências históricas sem split; não representam este fluxo e não são usados pela interface.

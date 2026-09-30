@@ -5,7 +5,7 @@ import Stripe from 'stripe';
 import {randomUUID} from 'node:crypto';
 import {createApp} from '../server/app.js';
 const origin='http://localhost:5173';
-test('cadastro, autorização, reserva, checkout e confirmação idempotente',async()=>{
+test('cadastro, autorização, reserva e bloqueio do checkout local sem Connect',async()=>{
  let checkoutCalls=0;
  const sdk=new Stripe('sk_test_fixture');
  const {app,db}=createApp({dbPath:':memory:',webhookSecret:'whsec_fixture',stripeClient:{webhooks:sdk.webhooks,checkout:{sessions:{create:async input=>{checkoutCalls++;assert.equal(input.line_items[0].price_data.unit_amount,18000);return {id:'cs_test_fixture',url:'https://checkout.stripe.com/test-fixture'}}}}}});
@@ -29,18 +29,7 @@ test('cadastro, autorização, reserva, checkout e confirmação idempotente',as
  assert.equal((await post(other,'/bookings/'+id+'/status',{status:'accepted'})).status,404);
  assert.equal((await post(p,'/bookings/'+id+'/status',{status:'accepted'})).status,200);
  assert.equal((await p.get('/api/bookings')).body[0].address,input.address);
- assert.equal((await post(other,'/checkout',{bookingId:id})).status,404);
- assert.equal((await post(c,'/checkout',{bookingId:id,price:1})).status,200);
- assert.equal((await post(c,'/checkout',{bookingId:id})).status,200);assert.equal(checkoutCalls,1);
- assert.equal((await post(c,'/bookings/'+id+'/status',{status:'cancelled'})).status,409);
- const payload=JSON.stringify({id:'evt_fixture',type:'checkout.session.completed',data:{object:{id:'cs_test_fixture',payment_status:'paid',currency:'brl',amount_total:18000,metadata:{bookingId:id},livemode:false}}});
- assert.equal((await request(app).post('/api/stripe/webhook').set('Content-Type','application/json').send(payload)).status,400);
- const signature=sdk.webhooks.generateTestHeaderString({payload,secret:'whsec_fixture'});
- for(let i=0;i<2;i++)assert.equal((await request(app).post('/api/stripe/webhook').set('Content-Type','application/json').set('stripe-signature',signature).send(payload)).status,200);
- assert.equal(db.prepare('SELECT payment FROM bookings WHERE id=?').get(id).payment,'paid');
- assert.equal(db.prepare('SELECT COUNT(*) n FROM stripe_events').get().n,1);
- assert.equal(db.prepare('SELECT COUNT(*) n FROM payment_ledger').get().n,1);
- assert.equal(db.prepare('SELECT amount FROM payment_ledger').get().amount,18000);
+ assert.equal((await post(c,'/checkout',{bookingId:id})).status,503);assert.equal(checkoutCalls,0);
  assert.equal((await request(app).post('/api/auth/register').send({})).status,403);
  db.close();
 });

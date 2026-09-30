@@ -10,8 +10,11 @@ Deno.serve(async req=>{
  if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)){
  const session=event.data.object as Stripe.Checkout.Session;
  if(session.payment_status==='paid'){
+ if(!event.account||!session.payment_intent)return new Response('Evento Connect obrigatório',{status:400});
+ let intent:Stripe.PaymentIntent;try{intent=await stripe.paymentIntents.retrieve(String(session.payment_intent),{}, {stripeAccount:event.account})}catch{return new Response('Não foi possível verificar a cobrança',{status:409})}
+ if(intent.transfer_data||intent.application_fee_amount==null)return new Response('Cobrança direta obrigatória',{status:400});
  const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
- const {error}=await db.rpc('helpme_confirm_payment',{event_id:event.id,session_id:session.id,booking_id:session.metadata?.bookingId,amount:session.amount_total,currency:session.currency,live:session.livemode});
+ const {error}=await db.rpc('helpme_confirm_payment',{event_id:event.id,session_id:session.id,booking_id:session.metadata?.bookingId,amount:session.amount_total,currency:session.currency,live:session.livemode,connected_account:event.account,application_fee:intent.application_fee_amount});
  if(error)return new Response('Pagamento não registrado; repetir entrega',{status:error.code==='PT400'?400:409});
  }
  }

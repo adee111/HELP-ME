@@ -1,0 +1,4 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {directCheckout,platformFee} from '../supabase/functions/_shared/direct-charge.ts';
+test('15% fee and direct charge keep total out of the platform charge balance',()=>{const d=directCheckout({id:'booking',price:18000,service_name:'Serviço',connected_account:'acct_Provider'},'https://example.com');assert.equal(d.options.stripeAccount,'acct_Provider');assert.equal(d.params.payment_intent_data.application_fee_amount,2700);assert.equal(d.params.line_items[0].price_data.unit_amount,18000);assert.equal('transfer_data' in d.params.payment_intent_data,false);assert.equal('on_behalf_of' in d.params.payment_intent_data,false);assert.equal(platformFee(10001),1500);assert.throws(()=>directCheckout({id:'bad',price:18000,service_name:'Serviço',connected_account:''},'https://example.com'))});
