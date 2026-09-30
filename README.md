@@ -1,6 +1,6 @@
 # Help.me — MVP local com Stripe Checkout
 
-Aplicação local funcional para validar cadastro de clientes/profissionais, ofertas, disponibilidade, solicitação de limpeza, aceite/recusa/cancelamento e checkout de teste. Não está publicado nem conectado a uma conta Stripe real. Nenhum commit ou push foi realizado.
+Aplicação local funcional para validar cadastro de clientes/profissionais, ofertas, disponibilidade, solicitação de limpeza, aceite/recusa/cancelamento e checkout de teste. Não está publicado nem conectado a uma conta Stripe real. O MVP foi enviado à branch main do repositório adee111/HELP-ME.
 
 ## Executar no seu PC
 
@@ -95,3 +95,11 @@ SQLite via node:sqlite, sem driver adicional, exige Node 24. Escolhido para test
 - package.json e package-lock.json: instalação reproduzível.
 
 Fonte Stripe: https://docs.stripe.com/webhooks e https://docs.stripe.com/connect.
+
+## Conta Stripe autenticada nesta sessão
+
+Autorização verificada em sandbox HELP-ME. Esta autorização da CLI é temporária e não constitui credencial permanente do servidor publicado. Não foi habilitado modo live.
+
+Links de demonstração foram criados no sandbox para os valores de referência R$180/R$260 e disponibilizados na prévia visual. Não geram agendamento e não atualizam seu status de pagamento; não substituem o fluxo autenticado de Checkout + webhook do backend. IDs e links públicos de teste estão em stripe-sandbox-links.json.
+
+Para pagamentos de agendamentos no site, ainda é necessário publicar o backend com persistência, configurar uma chave restrita Stripe no servidor e cadastrar/testar o webhook. A versão local aceita chaves sk_test_ ou rk_test_; o hosted checkout usa métodos dinâmicos configurados no Stripe. Split para profissionais permanece pendente.

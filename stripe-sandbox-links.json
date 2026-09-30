@@ -1,0 +1,20 @@
+[
+  {
+    "serviceId": "residential",
+    "productId": "prod_VLt55UDsRar7Zy",
+    "priceId": "price_1ULBJ1RpKDNHFrEIJcn7qB5D",
+    "linkId": "plink_1ULBJ2RpKDNHFrEIVWBloUfr",
+    "url": "https://buy.stripe.com/test_6oU9AV63pgti4xU6SX5kk00",
+    "amountCents": 18000,
+    "livemode": false
+  },
+  {
+    "serviceId": "deep",
+    "productId": "prod_VLt5tmQ0Nj72a1",
+    "priceId": "price_1ULBJ4RpKDNHFrEIHioem9JO",
+    "linkId": "plink_1ULBJ6RpKDNHFrEIVFrovXcp",
+    "url": "https://buy.stripe.com/test_4gMaEZ77tcd20hE2CH5kk01",
+    "amountCents": 26000,
+    "livemode": false
+  }
+]

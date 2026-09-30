@@ -22,7 +22,7 @@ export function createApp({dbPath=process.env.DATABASE_PATH||'data/helpme.sqlite
  `);
  for(const s of [['residential','Limpeza residencial',18000,240],['deep','Limpeza pesada',26000,360]])db.prepare('INSERT OR IGNORE INTO services VALUES(?,?,?,?)').run(...s);
  const key=process.env.STRIPE_SECRET_KEY;
- if(key && !key.startsWith('sk_test_'))throw new Error('Esta versão aceita somente Stripe em modo de teste.');
+ if(key && ! /^(sk|rk)_test_/.test(key))throw new Error('Esta versão aceita somente Stripe em modo de teste.');
  const stripe=stripeClient||(key?new Stripe(key):null);
  const checkoutLocks=new Set();
  const app=express();app.disable('x-powered-by');app.use(helmet());
@@ -85,7 +85,7 @@ export function createApp({dbPath=process.env.DATABASE_PATH||'data/helpme.sqlite
  if(b.checkout_url)return res.json({url:b.checkout_url});
  if(checkoutLocks.has(b.id))fail(409,'Checkout em criação.');
  checkoutLocks.add(b.id);
- let session;try{session=await stripe.checkout.sessions.create({mode:'payment',payment_method_types:['card'],line_items:[{price_data:{currency:'brl',unit_amount:b.price,product_data:{name:b.service_name}},quantity:1}],metadata:{bookingId:b.id},client_reference_id:b.id,success_url:`${appUrl}/?payment=return`,cancel_url:`${appUrl}/?payment=cancel`,expires_at:Math.floor(Date.now()/1000)+1800},{idempotencyKey:`booking-${b.id}`});}catch(e){checkoutLocks.delete(b.id);throw e}
+ let session;try{session=await stripe.checkout.sessions.create({mode:'payment',line_items:[{price_data:{currency:'brl',unit_amount:b.price,product_data:{name:b.service_name}},quantity:1}],metadata:{bookingId:b.id},client_reference_id:b.id,success_url:`${appUrl}/?payment=return`,cancel_url:`${appUrl}/?payment=cancel`,expires_at:Math.floor(Date.now()/1000)+1800},{idempotencyKey:`booking-${b.id}`});}catch(e){checkoutLocks.delete(b.id);throw e}
  if(!session.url){checkoutLocks.delete(b.id);fail(502,'Checkout indisponível.');}
  // Não permitir cancelamento durante a janela assíncrona de criação.
  const current=db.prepare('SELECT status FROM bookings WHERE id=?').get(b.id);
