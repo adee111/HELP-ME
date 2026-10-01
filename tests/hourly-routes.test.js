@@ -4,7 +4,7 @@ import {endpointFor,hourlyTotal} from '../src/lib/routes.ts';
 import request from 'supertest';
 import {randomUUID} from 'node:crypto';
 import {createApp} from '../server/app.js';
-test('cadastro de ofertas usa API principal; consultas e perfis usam reputação',()=>{assert.equal(endpointFor('/offers','POST'),'helpme-api');assert.equal(endpointFor('/offers','GET'),'helpme-reputation');assert.equal(endpointFor('/provider-profile?professionalId=123','GET'),'helpme-reputation');assert.equal(endpointFor('/checkout','POST'),'helpme-api');assert.equal(hourlyTotal(4500,240),18000);assert.equal(hourlyTotal(4500,90),6750)});
+test('cadastro de ofertas usa API principal; consultas e perfis usam reputação',()=>{assert.equal(endpointFor('/offers','POST'),'helpme-api');assert.equal(endpointFor('/offers','GET'),'helpme-reputation');assert.equal(endpointFor('/provider-profile?professionalId=123','GET'),'helpme-reputation');assert.equal(endpointFor('/checkout','POST'),'helpme-checkout');assert.equal(hourlyTotal(4500,240),18000);assert.equal(hourlyTotal(4500,90),6750)});
 test('valor por hora é calculado no servidor e foto é persistida no perfil',async()=>{
  const {app,db}=createApp({dbPath:':memory:'});try{
  const c=request.agent(app),p=request.agent(app);const post=(a,path,b)=>a.post('/api'+path).set('Origin','http://localhost:5173').send(b);

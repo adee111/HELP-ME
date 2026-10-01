@@ -206,3 +206,15 @@ O prestador pode escolher uma foto JPEG, PNG ou WebP de até 5 MB no cadastro e 
 Os preços de ofertas e os filtros representam R$/hora. O cliente escolhe de 0,5 a 12 horas; o servidor valida a disponibilidade e calcula o total em centavos, armazenando o valor/hora e as horas contratadas no agendamento. Agendamentos anteriores conservam o total original. Não há medição automática de ponto: a cobrança corresponde às horas escolhidas e confirmadas no pedido.
 
 A rota POST /offers usa helpme-api; somente GET /offers usa helpme-reputation. Testes de regressão: tests/hourly-routes.test.js e supabase/tests/hourly.sql.
+
+## Checkout do cliente — setembro de 2026
+
+Na área do cliente, **Agendamentos → Pagar serviço** abre a revisão com prestador, duração, tarifa por hora e total reservado. O checkout é permitido para serviços aceitos e concluídos, exclusivamente pelo cliente do pedido. Os dados do cartão são preenchidos na página hospedada do Stripe. A aplicação valida o domínio antes de redirecionar.
+
+A rota `/checkout` usa a Edge Function dedicada `helpme-checkout`. Sessões abertas são reutilizadas; sessões expiradas ou com pagamento assíncrono comprovadamente falho podem ser recriadas com nova chave de idempotência. Tokens de bloqueio impedem criação simultânea e desbloqueio por tentativas antigas. O prazo da sessão é o padrão do Stripe (24 horas); os parâmetros da tentativa são estáveis para retries. A cobrança direta mantém a taxa Help.me existente de 15%.
+
+O retorno do Stripe abre os agendamentos e consulta o status por até um minuto. O retorno nunca marca o serviço como pago: a confirmação continua sendo feita pelo webhook assinado existente e pela verificação da cobrança na conta conectada.
+
+**Situação operacional:** backend e interface publicados, mas cobrança externa ainda pendente de configuração. O servidor exige `HELPME_STRIPE_SECRET_KEY` de teste, `HELPME_STRIPE_WEBHOOK_SECRET` e conta de plataforma brasileira (`HELPME_STRIPE_PLATFORM_ACCOUNT_ID`). O prestador precisa concluir seu cadastro Stripe Connect. O endpoint obrigatório de eventos das contas conectadas é `https://ghtjngkdqfgpzklzcxxi.supabase.co/functions/v1/helpme-stripe-webhook`, com `checkout.session.completed` e `checkout.session.async_payment_succeeded`. Não inserir segredos no frontend ou no GitHub. Esta implementação mantém o bloqueio de chaves live; ativar cobranças reais exige configurar e validar o ambiente de produção separadamente.
+
+Validação: `npm run lint`, `npm test` (17 testes), `npm run build` e `supabase/tests/checkout.sql` executado no Supabase com rollback. O teste transacional cobre total reservado, cliente proprietário, bloqueio do administrador, concorrência, retry, confirmação idempotente e restrição das RPCs financeiras ao servidor. Nenhuma cobrança externa foi executada.
