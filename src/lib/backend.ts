@@ -1,8 +1,12 @@
 import {endpointFor} from './routes';
 import {createClient} from '@supabase/supabase-js';
+export const initialRecovery=new URLSearchParams(location.hash.slice(1));
+export let recoveryReady=false;
 const url=import.meta.env.VITE_SUPABASE_URL;
 const key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 export const supabase=url&&key?createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
+// Register before initialization completes so React never misses the recovery event.
+supabase?.auth.onAuthStateChange(event=>{if(event==='PASSWORD_RECOVERY')recoveryReady=true;if(event==='SIGNED_OUT')recoveryReady=false;});
 const response=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}});
 export async function apiFetch(path:string,options:RequestInit={}):Promise<Response>{
  if(!supabase)return fetch(path,options);
