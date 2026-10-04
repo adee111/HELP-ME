@@ -3,10 +3,10 @@ import {checkoutUrl} from './lib/checkout';
 import ProfilePhoto from './components/ProfilePhoto';
 import PasswordRecovery from './components/PasswordRecovery';
 import {apiFetch,supabase,initialRecovery,recoveryReady} from './lib/backend';
-import {StrictMode,useEffect,useState} from 'react';
+import {lazy,Suspense,StrictMode,useEffect,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import Dashboard from './features/professional-dashboard/Dashboard';
-import AdminDashboard from './features/admin/AdminDashboard';
+const Dashboard=lazy(()=>import('./features/professional-dashboard/Dashboard'));
+const AdminDashboard=lazy(()=>import('./features/admin/AdminDashboard'));
 import CustomerArea from './features/customer/CustomerArea';
 import './style.css';
 import './responsive.css';
@@ -51,4 +51,4 @@ function App(){
  if(loading&&!customerDemo)return <main><p role="status">Carregando a plataforma…</p></main>;
  return <CustomerArea user={user} offers={offers} bookings={bookings} services={services} busy={busy} error={message} catalogError={catalogError} catalogBusy={catalogBusy} onRetryCatalog={retryCatalog} stripe={stripe} demo={customerDemo} onRegister={()=>enter(true)} onLogin={()=>enter(false)} onLogout={()=>{if(customerDemo){location.assign('/');return}logout()}} onBook={input=>mutation(async()=>{await api('/bookings',input);await refresh()})} onCancel={id=>mutation(async()=>{await api('/bookings/'+id+'/status',{status:'cancelled'});await refresh()})} onPay={id=>mutation(async()=>{const data=await api('/checkout',{bookingId:id});location.assign(checkoutUrl(data.url))})}/>;
 }
-createRoot(document.getElementById('root')!).render(<StrictMode><App/></StrictMode>);
+createRoot(document.getElementById('root')!).render(<StrictMode><Suspense fallback={<main><p role="status">Carregando seu painel…</p></main>}><App/></Suspense></StrictMode>);
