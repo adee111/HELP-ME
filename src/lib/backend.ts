@@ -1,3 +1,4 @@
+import {catalogRequest} from './catalog';
 import {endpointFor} from './routes';
 import {createClient} from '@supabase/supabase-js';
 export const initialRecovery=new URLSearchParams(location.hash.slice(1));
@@ -33,7 +34,7 @@ export async function apiFetch(path:string,options:RequestInit={}):Promise<Respo
  const headers:Record<string,string>={'apikey':key,'Content-Type':'application/json'};
  if(session)headers.Authorization='Bearer '+session.access_token;
  const endpoint=endpointFor(route,options.method||'GET');
- const result=await fetch(url+'/functions/v1/'+endpoint,{method:'POST',headers,body:JSON.stringify({path:route,method:options.method||'GET',body})});
+ const result=await catalogRequest(()=>fetch(url+'/functions/v1/'+endpoint,{method:'POST',headers,body:JSON.stringify({path:route,method:options.method||'GET',body})}),route,options.method||'GET');
  if(route==='/me'&&result.ok){const account=await result.clone().json();if(account.user?.role==='professional'&&!['suspended','rejected'].includes(account.user.accountStatus))await apiFetch('/api/provider-profile/me').catch(()=>{});}
  return result;
 }
